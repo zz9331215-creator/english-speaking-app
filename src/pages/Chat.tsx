@@ -150,24 +150,61 @@ const MessageBubble = ({
     
     setIsTranslating(true)
     
-    // 模拟翻译功能
+    // 模拟翻译功能 - 现在支持所有AI回复
     setTimeout(() => {
-      const mockTranslations: Record<string, string> = {
-        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Self Introduction" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"自我介绍"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
-        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Hobbies & Interests" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"兴趣爱好"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
-        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Weather" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"天气"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
-        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Weekend Plans" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"周末安排"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
-        'Hey there! How are you doing today? 😊 I\'m really excited to practice English with you! Feel free to talk about anything you like - your day, your hobbies, what\'s on your mind... I\'m here to help you improve your English and have fun at the same time! What would you like to discuss?': '嘿，你好！你今天怎么样？我真的很兴奋能和你一起练习英语！随便聊你想聊的任何东西——你的一天，你的爱好，你在想什么...我在这里帮助你提高英语，同时也要玩得开心！你想讨论什么？',
-        "Oh wow, that's really interesting! I'd love to hear more about that. Can you tell me more? 😊": '哦哇，这真的很有趣！我想听更多关于那个的。你能告诉我更多吗？',
-        "I totally get what you're saying! That's such a cool perspective. What made you think about that?": '我完全理解你在说什么！这是一个很酷的观点。是什么让你想到那个的？',
-        "Haha, I love that! 😄 It's so great to chat with you. Can you share more details?": '哈哈哈，我太喜欢那个了！和你聊天真是太棒了。你能分享更多细节吗？',
-        "That's awesome! I really enjoy our conversation. Tell me, what's your favorite part about that?": '太棒了！我真的很享受我们的对话。告诉我，你最喜欢哪一部分？',
-        "I hear you! That's a great point. I've never thought about it that way before. What else can you share?": '我听到了！这是一个很好的观点。我以前从没那样想过。你还能分享什么？',
-        "Oh, that's fascinating! I'm learning so much from you. Can you tell me more? 🤔": '哦，那真是令人着迷！我从你这里学到了很多。你能告诉我更多吗？',
-        "That's wonderful! I love discussing topics like this. What's your experience been like?": '太棒了！我喜欢讨论这样的主题。你的经历是什么样的？',
+      // 简单的翻译映射
+      const basicTranslations: Record<string, string> = {
+        'Hey there': '嘿，你好',
+        'How are you': '你好吗',
+        'I\'m excited': '我很兴奋',
+        'Let\'s practice': '让我们练习',
+        'Don\'t worry': '别担心',
+        'making mistakes': '犯错误',
+        'how we learn': '我们学习的方式',
+        'Can you tell me': '你能告诉我',
+        'more about': '更多关于',
+        'That\'s interesting': '那很有趣',
+        'I get what you\'re saying': '我理解你说的',
+        'cool perspective': '很酷的观点',
+        'What made you think': '是什么让你想到',
+        'I love that': '我喜欢那个',
+        'great to chat': '聊天真好',
+        'share more details': '分享更多细节',
+        'That\'s awesome': '太棒了',
+        'enjoy our conversation': '享受我们的对话',
+        'favorite part': '最喜欢的部分',
+        'great point': '很好的观点',
+        'never thought': '从没想过',
+        'fascinating': '令人着迷',
+        'learning so much': '学到很多',
+        'What\'s your experience': '你的经历是什么',
       }
       
-      const translation = mockTranslations[message.content] || 'Sorry, this message cannot be translated at the moment.'
+      // 简单的翻译逻辑
+      let translation = message.content
+      
+      // 替换常见短语
+      Object.entries(basicTranslations).forEach(([english, chinese]) => {
+        const regex = new RegExp(english, 'gi')
+        translation = translation.replace(regex, chinese)
+      })
+      
+      // 处理一些基本的语法结构
+      translation = translation.replace(/I\'d love to/gi, '我很想')
+      translation = translation.replace(/Can you/gi, '你能')
+      translation = translation.replace(/Tell me/gi, '告诉我')
+      translation = translation.replace(/What\'s/gi, '什么是')
+      translation = translation.replace(/Let\'s/gi, '让我们')
+      translation = translation.replace(/Don\'t/gi, '不要')
+      
+      // 移除表情符号
+      translation = translation.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      
+      // 如果翻译和原文一样，使用通用翻译
+      if (translation === message.content) {
+        translation = `[AI回复] ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`
+      }
+      
       setTranslated(translation)
       setShowTranslation(true)
       setIsTranslating(false)
@@ -493,7 +530,7 @@ export default function Chat() {
           }
         }
         
-        recognition.onend = () => {
+        recognition.onend = async () => {
           // 录音结束时，如果有识别出的文字，自动发送
           if (finalTranscript.trim()) {
             const userMessage: Message = {
@@ -506,7 +543,27 @@ export default function Chat() {
             
             // 自动发送AI回复
             setIsLoading(true)
-            setTimeout(() => {
+            try {
+              // 调用豆包API
+              const { response, corrections, suggestions } = await callDoubaoAPI(finalTranscript.trim(), topic?.titleEn || '', apiKey)
+              
+              const aiMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: response,
+                timestamp: Date.now(),
+              }
+
+              setMessages(prev => prev.map(msg => 
+                msg.id === userMessage.id 
+                  ? { ...msg, corrections, suggestions }
+                  : msg
+              ))
+
+              setMessages(prev => [...prev, aiMessage])
+            } catch (error) {
+              console.error('API调用失败:', error)
+              // 失败时使用备用响应
               const { response, corrections, suggestions } = mockAIResponse(finalTranscript.trim(), topic?.titleEn || '')
               
               const aiMessage: Message = {
@@ -523,8 +580,9 @@ export default function Chat() {
               ))
 
               setMessages(prev => [...prev, aiMessage])
+            } finally {
               setIsLoading(false)
-            }, 1000 + Math.random() * 1000)
+            }
           }
           setIsRecording(false)
           setInputText('')
