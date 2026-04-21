@@ -87,11 +87,13 @@ const callDoubaoAPI = async (userMessage: string, topic: string | undefined): Pr
 // 模拟AI回复和语法纠正（作为备用）
 const mockAIResponse = (userMessage: string, _topicTitle: string): { response: string; corrections: GrammarCorrection[]; suggestions: string[] } => {
   const responses = [
-    "That's interesting! Tell me more about that.",
-    "I see what you mean. Could you elaborate on that?",
-    "Great point! What do you think about...",
-    "I understand. Let me share my perspective...",
-    "That's a good way to put it! Have you considered...",
+    "Oh wow, that's really interesting! I'd love to hear more about that. Can you tell me more? 😊",
+    "I totally get what you're saying! That's such a cool perspective. What made you think about that?",
+    "Haha, I love that! 😄 It's so great to chat with you. Can you share more details?",
+    "That's awesome! I really enjoy our conversation. Tell me, what's your favorite part about that?",
+    "I hear you! That's a great point. I've never thought about it that way before. What else can you share?",
+    "Oh, that's fascinating! I'm learning so much from you. Can you tell me more? 🤔",
+    "That's wonderful! I love discussing topics like this. What's your experience been like?",
   ]
   
   const randomResponse = responses[Math.floor(Math.random() * responses.length)]
@@ -104,17 +106,17 @@ const mockAIResponse = (userMessage: string, _topicTitle: string): { response: s
     corrections.push({
       original: userMessage.split(' ').slice(0, 3).join(' '),
       corrected: userMessage.split(' ').slice(0, 3).join(' ').replace(/^./, c => c.toUpperCase()),
-      explanation: '句子开头需要大写',
+      explanation: 'Remember to start your sentence with a capital letter! 😊',
       type: 'grammar'
     })
   }
   
   if (!userMessage.includes('.') && userMessage.length > 10) {
-    suggestions.push('尝试使用更完整的句子，以句号结束。')
+    suggestions.push('Great try! Try using complete sentences with periods to make your English clearer! 💪')
   }
   
   if (userMessage.split(' ').length < 5) {
-    suggestions.push('可以尝试用更多词汇来表达你的想法，让对话更丰富。')
+    suggestions.push('You\'re doing great! Try adding a few more words to express your thoughts more fully! 🌟')
   }
   
   return {
@@ -136,9 +138,14 @@ const MessageBubble = ({
   const isUser = message.role === 'user'
   const [translated, setTranslated] = useState<string | null>(null)
   const [isTranslating, setIsTranslating] = useState(false)
+  const [showTranslation, setShowTranslation] = useState(false)
   
   const handleTranslate = async () => {
-    if (translated || isTranslating) return
+    // 如果已经有翻译，切换显示/隐藏状态
+    if (translated) {
+      setShowTranslation(!showTranslation)
+      return
+    }
     
     setIsTranslating(true)
     
@@ -156,6 +163,7 @@ const MessageBubble = ({
       
       const translation = mockTranslations[message.content] || '这是一条英语消息的翻译。'
       setTranslated(translation)
+      setShowTranslation(true)
       setIsTranslating(false)
     }, 500)
   }
@@ -182,8 +190,8 @@ const MessageBubble = ({
             {message.content}
           </p>
           
-          {/* Translation */}
-          {translated && (
+          {/* Translation - 根据showTranslation状态显示/隐藏 */}
+          {translated && showTranslation && (
             <div className={`mt-2 pt-2 border-t ${isUser ? 'border-white/20' : 'border-gray-100'}`}>
               <p className={`text-sm ${isUser ? 'text-white/80' : 'text-gray-600'}`}>
                 {translated}
@@ -212,14 +220,16 @@ const MessageBubble = ({
                 onClick={handleTranslate}
                 disabled={isTranslating}
                 className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                title="翻译"
+                title={translated ? (showTranslation ? '隐藏翻译' : '显示翻译') : '翻译'}
               >
                 {isTranslating ? (
                   <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                 ) : translated ? (
-                  <span className="text-xs text-green-600 font-medium">已翻译</span>
+                  <span className={`text-xs font-medium ${showTranslation ? 'text-green-600' : 'text-gray-600'}`}>
+                    {showTranslation ? '隐藏' : '译'}
+                  </span>
                 ) : (
-                  <span className="text-xs text-gray-600 font-medium">翻译</span>
+                  <span className="text-xs text-gray-600 font-medium">译</span>
                 )}
               </button>
               <button 
@@ -332,8 +342,8 @@ export default function Chat() {
       id: 'welcome',
       role: 'assistant',
       content: topic 
-        ? `Hello! I'm your English speaking practice partner. Today we'll practice the "${topic.titleEn}" topic. ${topic.description}. You can start the conversation at any time, and I'll help you correct grammar errors and give improvement suggestions.`
-        : 'Hello! Im your English speaking practice partner. We can have a free conversation, and Ill help you correct grammar errors and give improvement suggestions. What would you like to talk about?',
+        ? `Hey there! I'm so excited to chat with you today! 🎉 We're going to practice "${topic.titleEn}" together. ${topic.description}. Don't worry about making mistakes - that's how we learn! Let's start with you telling me a bit about yourself, or ask me anything!`
+        : `Hey there! How are you doing today? 😊 I'm really excited to practice English with you! Feel free to talk about anything you like - your day, your hobbies, what's on your mind... I'm here to help you improve your English and have fun at the same time! What would you like to discuss?`,
       timestamp: Date.now(),
     }
     setMessages([welcomeMessage])
@@ -421,8 +431,8 @@ export default function Chat() {
   const toggleRecording = () => {
     if (!isRecording) {
       // 检查浏览器是否支持语音识别
-      if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
         
         recognition.lang = 'en-US'
@@ -433,7 +443,7 @@ export default function Chat() {
         
         let finalTranscript = ''
         
-        recognition.onresult = (event) => {
+        recognition.onresult = (event: any) => {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript
             if (event.results[i].isFinal) {
@@ -447,7 +457,7 @@ export default function Chat() {
           setIsRecording(false)
         }
         
-        recognition.onerror = (event) => {
+        recognition.onerror = (event: any) => {
           console.error('语音识别错误:', event.error)
           setIsRecording(false)
         }
@@ -464,8 +474,8 @@ export default function Chat() {
       }
     } else {
       // 停止录音
-      if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
         const recognition = new SpeechRecognition()
         recognition.stop()
       }
