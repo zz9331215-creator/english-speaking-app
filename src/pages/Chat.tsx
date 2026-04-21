@@ -441,7 +441,7 @@ export default function Chat() {
         const recognition = new SpeechRecognition()
         
         recognition.lang = 'en-US'
-        recognition.continuous = false
+        recognition.continuous = true
         recognition.interimResults = true
         
         setIsRecording(true)
@@ -452,19 +452,55 @@ export default function Chat() {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript
             if (event.results[i].isFinal) {
-              finalTranscript += transcript
-              setInputText(finalTranscript)
+              finalTranscript += transcript + ' '
+            } else {
+              // 实时显示正在识别的文字
+              setInputText(transcript)
             }
           }
         }
         
         recognition.onend = () => {
+          // 录音结束时，如果有识别出的文字，自动发送
+          if (finalTranscript.trim()) {
+            const userMessage: Message = {
+              id: Date.now().toString(),
+              role: 'user',
+              content: finalTranscript.trim(),
+              timestamp: Date.now(),
+            }
+            setMessages(prev => [...prev, userMessage])
+            
+            // 自动发送AI回复
+            setIsLoading(true)
+            setTimeout(() => {
+              const { response, corrections, suggestions } = mockAIResponse(finalTranscript.trim(), topic?.titleEn || '')
+              
+              const aiMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: response,
+                timestamp: Date.now(),
+              }
+
+              setMessages(prev => prev.map(msg => 
+                msg.id === userMessage.id 
+                  ? { ...msg, corrections, suggestions }
+                  : msg
+              ))
+
+              setMessages(prev => [...prev, aiMessage])
+              setIsLoading(false)
+            }, 1000 + Math.random() * 1000)
+          }
           setIsRecording(false)
+          setInputText('')
         }
         
         recognition.onerror = (event: any) => {
           console.error('语音识别错误:', event.error)
           setIsRecording(false)
+          setInputText('')
         }
         
         recognition.start()
@@ -473,7 +509,6 @@ export default function Chat() {
         setIsRecording(true)
         setTimeout(() => {
           setIsRecording(false)
-          // 不设置固定文本，让用户知道需要手动输入
           setInputText('')
         }, 1000)
       }
@@ -565,51 +600,76 @@ export default function Chat() {
 
       {/* Input Area */}
       <div className="bg-white border-t border-gray-100 p-4 safe-area-bottom">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleRecording}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-              isRecording 
-                ? 'bg-red-500 animate-pulse' 
-                : 'bg-gray-100 hover:bg-gray-200'
-            }`}
-          >
-            <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : 'text-gray-600'}`} />
-          </button>
-          
-          <div className="flex-1 relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isRecording ? '正在聆听...' : '输入消息或点击麦克风说话...'}
-              disabled={isRecording}
-              className="w-full bg-gray-100 rounded-full px-5 py-3 pr-12 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-            />
-            {inputText && (
-              <button
-                onClick={() => setInputText('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 transition-colors"
-              >
-                <X className="w-4 h-4 text-gray-400" />
-              </button>
-            )}
+        {isRecording ? (
+          // 录音模式 - 类似微信
+          <div className="flex items-center justify-center gap-8 animate-fade-in">
+            <button
+              onClick={() => setInputText('')}
+              className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+            >
+              <X className="w-6 h-6 text-gray-600" />
+            </button>
+            
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center animate-pulse shadow-lg shadow-red-200">
+                <div className="w-6 h-6 rounded-full bg-white animate-ping opacity-50" />
+                <Mic className="absolute w-7 h-7 text-white" />
+              </div>
+              <span className="text-sm text-red-500 font-medium animate-pulse">
+                {inputText || 'Listening...'}
+              </span>
+            </div>
+            
+            <button
+              onClick={toggleRecording}
+              className="w-14 h-14 rounded-full bg-primary-500 flex items-center justify-center hover:bg-primary-600 transition-colors shadow-lg shadow-primary-200"
+            >
+              <Send className="w-6 h-6 text-white rotate-90" />
+            </button>
           </div>
-          
-          <button
-            onClick={handleSend}
-            disabled={!inputText.trim() || isLoading}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-              inputText.trim() && !isLoading
-                ? 'bg-primary-500 hover:bg-primary-600 shadow-lg shadow-primary-200'
-                : 'bg-gray-200'
-            }`}
-          >
-            <Send className={`w-5 h-5 ${inputText.trim() && !isLoading ? 'text-white' : 'text-gray-400'}`} />
-          </button>
-        </div>
+        ) : (
+          // 普通模式
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleRecording}
+              className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 bg-gray-100 hover:bg-gray-200"
+            >
+              <Mic className="w-5 h-5 text-gray-600" />
+            </button>
+            
+            <div className="flex-1 relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Say something or type a message..."
+                className="w-full bg-gray-100 rounded-full px-5 py-3 pr-12 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+              />
+              {inputText && (
+                <button
+                  onClick={() => setInputText('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              )}
+            </div>
+            
+            <button
+              onClick={handleSend}
+              disabled={!inputText.trim() || isLoading}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                inputText.trim() && !isLoading
+                  ? 'bg-primary-500 hover:bg-primary-600 shadow-lg shadow-primary-200'
+                  : 'bg-gray-200'
+              }`}
+            >
+              <Send className={`w-5 h-5 ${inputText.trim() && !isLoading ? 'text-white' : 'text-gray-400'}`} />
+            </button>
+          </div>
+        )}
         
         <p className="text-center text-xs text-gray-400 mt-3">
           AI 会纠正你的语法错误并提供改进建议
