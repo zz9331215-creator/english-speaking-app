@@ -6,6 +6,7 @@ import {
   Mic, 
   Send,
   Volume2,
+  Pause,
   RotateCcw,
   X,
   CheckCircle2,
@@ -129,11 +130,13 @@ const mockAIResponse = (userMessage: string, _topicTitle: string): { response: s
 const MessageBubble = ({ 
   message, 
   onPlayAudio,
-  onShowCorrection 
+  onShowCorrection,
+  isPlaying 
 }: { 
   message: Message
   onPlayAudio: (text: string) => void
   onShowCorrection: (message: Message) => void
+  isPlaying: boolean
 }) => {
   const isUser = message.role === 'user'
   const [translated, setTranslated] = useState<string | null>(null)
@@ -240,9 +243,13 @@ const MessageBubble = ({
               <button 
                 onClick={() => onPlayAudio(message.content)}
                 className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                title="播放"
+                title={isPlaying ? "暂停" : "播放"}
               >
-                <Volume2 className="w-3.5 h-3.5 text-gray-600" />
+                {isPlaying ? (
+                  <Pause className="w-3.5 h-3.5 text-primary-600" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5 text-gray-600" />
+                )}
               </button>
             </>
           )}
@@ -338,6 +345,7 @@ export default function Chat() {
   const [isRecording, setIsRecording] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -426,10 +434,24 @@ export default function Chat() {
   const handlePlayAudio = (text: string) => {
     // 使用Web Speech API播放音频
     if ('speechSynthesis' in window) {
+      // 如果正在播放，先停止
+      if (isPlaying) {
+        window.speechSynthesis.cancel()
+        setIsPlaying(false)
+        return
+      }
+      
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'en-US'
       utterance.rate = 0.9
+      
+      utterance.onend = () => {
+        setIsPlaying(false)
+      }
+      
+      window.speechSynthesis.cancel() // 先取消任何正在播放的语音
       window.speechSynthesis.speak(utterance)
+      setIsPlaying(true)
     }
   }
 
@@ -577,6 +599,7 @@ export default function Chat() {
             message={message}
             onPlayAudio={handlePlayAudio}
             onShowCorrection={setSelectedMessage}
+            isPlaying={isPlaying}
           />
         ))}
         
