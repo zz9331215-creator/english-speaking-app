@@ -287,13 +287,20 @@ export default function Chat() {
         
         recognition.lang = 'en-US'
         recognition.continuous = false
-        recognition.interimResults = false
+        recognition.interimResults = true
         
         setIsRecording(true)
         
+        let finalTranscript = ''
+        
         recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript
-          setInputText(transcript)
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript
+              setInputText(finalTranscript)
+            }
+          }
         }
         
         recognition.onend = () => {
@@ -307,12 +314,13 @@ export default function Chat() {
         
         recognition.start()
       } else {
-        // 浏览器不支持语音识别，使用模拟功能
+        // 浏览器不支持语音识别
         setIsRecording(true)
         setTimeout(() => {
           setIsRecording(false)
-          setInputText('I want to practice my English speaking skills.')
-        }, 2000)
+          // 不设置固定文本，让用户知道需要手动输入
+          setInputText('')
+        }, 1000)
       }
     } else {
       // 停止录音
