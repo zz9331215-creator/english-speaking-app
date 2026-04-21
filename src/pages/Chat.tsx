@@ -280,13 +280,47 @@ export default function Chat() {
 
   const toggleRecording = () => {
     if (!isRecording) {
-      setIsRecording(true)
-      // 模拟语音识别
-      setTimeout(() => {
-        setIsRecording(false)
-        setInputText('I want to practice my English speaking skills.')
-      }, 2000)
+      // 检查浏览器是否支持语音识别
+      if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        const recognition = new SpeechRecognition()
+        
+        recognition.lang = 'en-US'
+        recognition.continuous = false
+        recognition.interimResults = false
+        
+        setIsRecording(true)
+        
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript
+          setInputText(transcript)
+        }
+        
+        recognition.onend = () => {
+          setIsRecording(false)
+        }
+        
+        recognition.onerror = (event) => {
+          console.error('语音识别错误:', event.error)
+          setIsRecording(false)
+        }
+        
+        recognition.start()
+      } else {
+        // 浏览器不支持语音识别，使用模拟功能
+        setIsRecording(true)
+        setTimeout(() => {
+          setIsRecording(false)
+          setInputText('I want to practice my English speaking skills.')
+        }, 2000)
+      }
     } else {
+      // 停止录音
+      if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        const recognition = new SpeechRecognition()
+        recognition.stop()
+      }
       setIsRecording(false)
     }
   }
