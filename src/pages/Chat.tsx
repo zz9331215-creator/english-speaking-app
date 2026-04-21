@@ -345,7 +345,7 @@ export default function Chat() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [voiceType, setVoiceType] = useState('alloy')
-  const [apiKey, setApiKey] = useState('YOUR_DOBAO_API_KEY')
+  const [apiKey, setApiKey] = useState('ark-8079f313-73d0-40b8-ba02-399db0daf212-48810')
   const [showSettings, setShowSettings] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
