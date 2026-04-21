@@ -15,7 +15,76 @@ import {
 import { getTopicById } from '../data/topics'
 import type { Message, GrammarCorrection } from '../types'
 
-// 模拟AI回复和语法纠正
+// 豆包API调用函数
+const callDoubaoAPI = async (userMessage: string, topic: string | undefined): Promise<{ response: string; corrections: GrammarCorrection[]; suggestions: string[] }> => {
+  // 这里需要替换为实际的豆包API Key
+  const API_KEY = 'YOUR_DOBAO_API_KEY'
+  const API_URL = 'https://api.doubao.com/v1/chat/completions'
+  
+  try {
+    const systemPrompt = topic 
+      ? `You are a friendly English conversation partner helping the user practice English speaking on the topic of "${topic}". Provide natural English responses, correct grammar errors, and give improvement suggestions.`
+      : 'You are a friendly English conversation partner helping the user practice English speaking. Provide natural English responses, correct grammar errors, and give improvement suggestions.'
+    
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'doubao-1.0-pro-20240528',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    const aiResponse = data.choices[0].message.content
+    
+    // 模拟语法纠正（实际应用中可以让豆包返回纠正信息）
+    const corrections: GrammarCorrection[] = []
+    const suggestions: string[] = []
+    
+    // 简单的语法检查
+    if (userMessage.length > 20 && !/^[A-Z]/.test(userMessage)) {
+      corrections.push({
+        original: userMessage,
+        corrected: userMessage.replace(/^./, c => c.toUpperCase()),
+        explanation: 'Sentences should start with a capital letter.',
+        type: 'grammar'
+      })
+    }
+    
+    if (!userMessage.includes('.') && userMessage.length > 10) {
+      suggestions.push('Try to use complete sentences with proper punctuation.')
+    }
+    
+    return {
+      response: aiResponse,
+      corrections,
+      suggestions
+    }
+  } catch (error) {
+    console.error('API call failed:', error)
+    // 失败时使用备用响应
+    return {
+      response: "I'm sorry, I couldn't process your request. Could you please try again?",
+      corrections: [],
+      suggestions: []
+    }
+  }
+}
+
+// 模拟AI回复和语法纠正（作为备用）
 const mockAIResponse = (userMessage: string, _topicTitle: string): { response: string; corrections: GrammarCorrection[]; suggestions: string[] } => {
   const responses = [
     "That's interesting! Tell me more about that.",
@@ -289,9 +358,9 @@ export default function Chat() {
     setInputText('')
     setIsLoading(true)
 
-    // 模拟AI响应延迟
-    setTimeout(() => {
-      const { response, corrections, suggestions } = mockAIResponse(userMessage.content, topic?.title || '')
+    try {
+      // 调用豆包API
+      const { response, corrections, suggestions } = await callDoubaoAPI(userMessage.content, topic?.titleEn || '')
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -308,8 +377,28 @@ export default function Chat() {
       ))
 
       setMessages(prev => [...prev, aiMessage])
+    } catch (error) {
+      console.error('Error handling send:', error)
+      // 失败时使用模拟响应
+      const { response, corrections, suggestions } = mockAIResponse(userMessage.content, topic?.title || '')
+      
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response,
+        timestamp: Date.now(),
+      }
+
+      setMessages(prev => prev.map(msg => 
+        msg.id === userMessage.id 
+          ? { ...msg, corrections, suggestions }
+          : msg
+      ))
+
+      setMessages(prev => [...prev, aiMessage])
+    } finally {
       setIsLoading(false)
-    }, 1000 + Math.random() * 1000)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
