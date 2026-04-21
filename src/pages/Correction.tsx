@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, 
@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Award
 } from 'lucide-react'
+import { speechRecognition } from '../utils/speechRecognition'
 import type { GrammarCorrection } from '../types'
 
 interface PracticeSentence {
@@ -100,54 +101,126 @@ export default function Correction() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [hasRecorded, setHasRecorded] = useState(false)
+  const [recognizedText, setRecognizedText] = useState('')
   const [analysisResult, setAnalysisResult] = useState<ReturnType<typeof analyzeSentence> | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [showAnalysis, setShowAnalysis] = useState(false)
 
   const currentSentence = practiceSentences[currentIndex]
 
-  const handlePlayAudio = (text: string) => {
+  const handlePlayAudio = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
+      // 如果正在播放，先停止
+      if (isPlaying) {
+        window.speechSynthesis.cancel()
+        setIsPlaying(false)
+        return
+      }
+
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'en-US'
       utterance.rate = 0.8
       utterance.onend = () => setIsPlaying(false)
+      utterance.onerror = () => setIsPlaying(false)
       setIsPlaying(true)
       window.speechSynthesis.speak(utterance)
     }
-  }
+  }, [isPlaying])
+
+  const performAnalysis = useCallback((spoken: string) => {
+    const result = analyzeSentence(spoken, currentSentence.english)
+    setAnalysisResult(result)
+    setShowAnalysis(true)
+    setHasRecorded(true)
+    setIsRecording(false)
+  }, [currentSentence])
 
   const toggleRecording = () => {
     if (!isRecording) {
+      // 检查浏览器是否支持语音识别
+      if (!speechRecognition.isSupported()) {
+        // 浏览器不支持，使用模拟模式
+        setIsRecording(true)
+        setHasRecorded(false)
+        setAnalysisResult(null)
+        setShowAnalysis(false)
+        setRecognizedText('')
+
+        setTimeout(() => {
+          const mockSpoken = currentSentence.english
+          setRecognizedText(mockSpoken)
+          performAnalysis(mockSpoken)
+        }, 3000)
+        return
+      }
+
       setIsRecording(true)
       setHasRecorded(false)
       setAnalysisResult(null)
       setShowAnalysis(false)
-      
-      // 模拟录音3秒后自动停止并分析
-      setTimeout(() => {
+      setRecognizedText('')
+      speechRecognition.reset()
+
+      // 设置语音识别回调
+      speechRecognition.setCallbacks({
+        onStart: () => {
+          console.log('语音识别已启动')
+        },
+        onInterimResult: (transcript: string) => {
+          setRecognizedText(transcript)
+        },
+        onFinalResult: (transcript: string) => {
+          setRecognizedText(transcript)
+        },
+        onError: (error: string) => {
+          console.error('语音识别错误:', error)
+          setIsRecording(false)
+        },
+        onEnd: () => {
+          const finalTranscript = speechRecognition.getFinalTranscript()
+          if (finalTranscript.trim()) {
+            setRecognizedText(finalTranscript)
+            performAnalysis(finalTranscript)
+          } else {
+            setIsRecording(false)
+          }
+        }
+      })
+
+      // 启动语音识别
+      const started = speechRecognition.start({
+        lang: 'en-US',
+        continuous: false,
+        interimResults: true
+      })
+
+      if (!started) {
         setIsRecording(false)
-        setHasRecorded(true)
-        // 模拟识别结果（实际应该来自语音识别API）
-        const mockSpoken = currentSentence.english
-        const result = analyzeSentence(mockSpoken, currentSentence.english)
-        setAnalysisResult(result)
-        setShowAnalysis(true)
-      }, 3000)
+      }
     } else {
-      setIsRecording(false)
+      // 停止录音
+      speechRecognition.stop()
+      const finalTranscript = speechRecognition.getFinalTranscript()
+      if (finalTranscript.trim()) {
+        setRecognizedText(finalTranscript)
+        performAnalysis(finalTranscript)
+      } else {
+        setIsRecording(false)
+      }
     }
   }
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % practiceSentences.length)
     setHasRecorded(false)
+    setRecognizedText('')
     setAnalysisResult(null)
     setShowAnalysis(false)
   }
 
   const handleRetry = () => {
     setHasRecorded(false)
+    setRecognizedText('')
     setAnalysisResult(null)
     setShowAnalysis(false)
   }
@@ -261,6 +334,26 @@ export default function Correction() {
               )}
             </button>
           </div>
+
+          {/* 实时识别文本显示 */}
+          {isRecording && recognizedText && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-xl">
+              <p className="text-sm text-gray-600 text-center">
+                <span className="text-xs text-gray-400 block mb-1">识别中...</span>
+                {recognizedText}
+              </p>
+            </div>
+          )}
+
+          {/* 最终识别文本显示 */}
+          {hasRecorded && recognizedText && (
+            <div className="mt-4 p-3 bg-green-50 rounded-xl">
+              <p className="text-sm text-gray-700 text-center">
+                <span className="text-xs text-green-600 block mb-1">你的朗读</span>
+                {recognizedText}
+              </p>
+            </div>
+          )}
 
           <p className="text-center text-sm text-gray-500 mt-4">
             {isRecording ? '正在聆听...' : hasRecorded ? '朗读完成' : '点击麦克风开始朗读'}

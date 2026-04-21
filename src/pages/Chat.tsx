@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, 
@@ -11,9 +11,12 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  Lightbulb
+  Lightbulb,
+  Languages
 } from 'lucide-react'
 import { getTopicById } from '../data/topics'
+import { speechRecognition } from '../utils/speechRecognition'
+import { translateText } from '../utils/translation'
 import type { Message, GrammarCorrection } from '../types'
 
 // 豆包API调用函数
@@ -125,92 +128,48 @@ const mockAIResponse = (userMessage: string, _topicTitle: string): { response: s
   }
 }
 
-const MessageBubble = ({ 
-  message, 
+const MessageBubble = ({
+  message,
   onPlayAudio,
   onShowCorrection,
-  isPlaying 
-}: { 
+  playingMessageId,
+  apiKey
+}: {
   message: Message
-  onPlayAudio: (text: string) => void
+  onPlayAudio: (text: string, messageId: string) => void
   onShowCorrection: (message: Message) => void
-  isPlaying: boolean
+  playingMessageId: string | null
+  apiKey: string
 }) => {
   const isUser = message.role === 'user'
+  const isPlaying = playingMessageId === message.id
   const [translated, setTranslated] = useState<string | null>(null)
   const [isTranslating, setIsTranslating] = useState(false)
   const [showTranslation, setShowTranslation] = useState(false)
-  
+
   const handleTranslate = async () => {
     // 如果已经有翻译，切换显示/隐藏状态
     if (translated) {
       setShowTranslation(!showTranslation)
       return
     }
-    
+
     setIsTranslating(true)
-    
-    // 模拟翻译功能 - 现在支持所有AI回复
-    setTimeout(() => {
-      // 简单的翻译映射
-      const basicTranslations: Record<string, string> = {
-        'Hey there': '嘿，你好',
-        'How are you': '你好吗',
-        'I\'m excited': '我很兴奋',
-        'Let\'s practice': '让我们练习',
-        'Don\'t worry': '别担心',
-        'making mistakes': '犯错误',
-        'how we learn': '我们学习的方式',
-        'Can you tell me': '你能告诉我',
-        'more about': '更多关于',
-        'That\'s interesting': '那很有趣',
-        'I get what you\'re saying': '我理解你说的',
-        'cool perspective': '很酷的观点',
-        'What made you think': '是什么让你想到',
-        'I love that': '我喜欢那个',
-        'great to chat': '聊天真好',
-        'share more details': '分享更多细节',
-        'That\'s awesome': '太棒了',
-        'enjoy our conversation': '享受我们的对话',
-        'favorite part': '最喜欢的部分',
-        'great point': '很好的观点',
-        'never thought': '从没想过',
-        'fascinating': '令人着迷',
-        'learning so much': '学到很多',
-        'What\'s your experience': '你的经历是什么',
-      }
-      
-      // 简单的翻译逻辑
-      let translation = message.content
-      
-      // 替换常见短语
-      Object.entries(basicTranslations).forEach(([english, chinese]) => {
-        const regex = new RegExp(english, 'gi')
-        translation = translation.replace(regex, chinese)
-      })
-      
-      // 处理一些基本的语法结构
-      translation = translation.replace(/I\'d love to/gi, '我很想')
-      translation = translation.replace(/Can you/gi, '你能')
-      translation = translation.replace(/Tell me/gi, '告诉我')
-      translation = translation.replace(/What\'s/gi, '什么是')
-      translation = translation.replace(/Let\'s/gi, '让我们')
-      translation = translation.replace(/Don\'t/gi, '不要')
-      
-      // 移除表情符号
-      translation = translation.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-      
-      // 如果翻译和原文一样，使用通用翻译
-      if (translation === message.content) {
-        translation = `[AI回复] ${message.content.substring(0, 50)}${message.content.length > 50 ? '...' : ''}`
-      }
-      
-      setTranslated(translation)
+
+    try {
+      // 调用翻译服务（支持API翻译和客户端备用翻译）
+      const result = await translateText(message.content, apiKey)
+      setTranslated(result)
       setShowTranslation(true)
+    } catch (error) {
+      console.error('翻译失败:', error)
+      setTranslated('[翻译失败]')
+      setShowTranslation(true)
+    } finally {
       setIsTranslating(false)
-    }, 500)
+    }
   }
-  
+
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''} animate-slide-up`}>
       <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -222,17 +181,17 @@ const MessageBubble = ({
           <span className="text-white font-medium text-sm">AI</span>
         )}
       </div>
-      
+
       <div className={`flex-1 max-w-[75%] ${isUser ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
         <div className={`relative group px-4 py-3 rounded-2xl ${
-          isUser 
-            ? 'bg-primary-500 text-white rounded-br-md' 
+          isUser
+            ? 'bg-primary-500 text-white rounded-br-md'
             : 'bg-white border border-gray-100 rounded-bl-md shadow-sm'
         }`}>
           <p className={`text-[15px] leading-relaxed ${isUser ? 'text-white' : 'text-gray-800'}`}>
             {message.content}
           </p>
-          
+
           {/* Translation - 根据showTranslation状态显示/隐藏 */}
           {translated && showTranslation && (
             <div className={`mt-2 pt-2 border-t ${isUser ? 'border-white/20' : 'border-gray-100'}`}>
@@ -241,7 +200,7 @@ const MessageBubble = ({
               </p>
             </div>
           )}
-          
+
           {/* Correction indicator */}
           {isUser && message.corrections && message.corrections.length > 0 && (
             <button
@@ -252,41 +211,41 @@ const MessageBubble = ({
             </button>
           )}
         </div>
-        
+
         <div className={`flex items-center gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
           <span className="text-xs text-gray-400">
             {new Date(message.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
           </span>
+
+          {/* 翻译按钮 - 用户消息和AI消息都支持 */}
+          <button
+            onClick={handleTranslate}
+            disabled={isTranslating}
+            className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            title={translated ? (showTranslation ? '隐藏翻译' : '显示翻译') : '翻译'}
+          >
+            {isTranslating ? (
+              <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin block" />
+            ) : translated ? (
+              <Languages className={`w-3.5 h-3.5 ${showTranslation ? 'text-green-600' : 'text-gray-600'}`} />
+            ) : (
+              <Languages className="w-3.5 h-3.5 text-gray-600" />
+            )}
+          </button>
+
+          {/* 语音播放按钮 - 仅AI消息显示 */}
           {!isUser && (
-            <>
-              <button 
-                onClick={handleTranslate}
-                disabled={isTranslating}
-                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                title={translated ? (showTranslation ? '隐藏翻译' : '显示翻译') : '翻译'}
-              >
-                {isTranslating ? (
-                  <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                ) : translated ? (
-                  <span className={`text-xs font-medium ${showTranslation ? 'text-green-600' : 'text-gray-600'}`}>
-                    {showTranslation ? '隐藏' : '译'}
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-600 font-medium">译</span>
-                )}
-              </button>
-              <button 
-                onClick={() => onPlayAudio(message.content)}
-                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                title={isPlaying ? "暂停" : "播放"}
-              >
-                {isPlaying ? (
-                  <Pause className="w-3.5 h-3.5 text-primary-600" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5 text-gray-600" />
-                )}
-              </button>
-            </>
+            <button
+              onClick={() => onPlayAudio(message.content, message.id)}
+              className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              title={isPlaying ? "暂停" : "播放"}
+            >
+              {isPlaying ? (
+                <Pause className="w-3.5 h-3.5 text-primary-600" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5 text-gray-600" />
+              )}
+            </button>
           )}
         </div>
       </div>
@@ -380,7 +339,7 @@ export default function Chat() {
   const [isRecording, setIsRecording] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null)
   const [voiceType, setVoiceType] = useState('alloy')
   const [apiKey, setApiKey] = useState('ark-8079f313-73d0-40b8-ba02-399db0daf212-48810')
   const [showSettings, setShowSettings] = useState(false)
@@ -469,68 +428,87 @@ export default function Chat() {
     }
   }
 
-  const handlePlayAudio = (text: string) => {
+  const handlePlayAudio = useCallback((text: string, messageId: string) => {
     // 使用Web Speech API播放音频
     if ('speechSynthesis' in window) {
-      // 如果正在播放，先停止
-      if (isPlaying) {
+      // 如果正在播放同一条消息，停止播放
+      if (playingMessageId === messageId) {
         window.speechSynthesis.cancel()
-        setIsPlaying(false)
+        setPlayingMessageId(null)
         return
       }
-      
+
+      // 如果正在播放其他消息，先停止
+      if (playingMessageId) {
+        window.speechSynthesis.cancel()
+      }
+
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'en-US'
       utterance.rate = 0.9
-      
+
       // 设置语音音色
       const voices = window.speechSynthesis.getVoices()
-      const selectedVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes(voiceType) || 
+      const selectedVoice = voices.find(voice =>
+        voice.name.toLowerCase().includes(voiceType) ||
         voice.voiceURI.toLowerCase().includes(voiceType)
       )
       if (selectedVoice) {
         utterance.voice = selectedVoice
       }
-      
+
       utterance.onend = () => {
-        setIsPlaying(false)
+        setPlayingMessageId(null)
       }
-      
+
+      utterance.onerror = () => {
+        setPlayingMessageId(null)
+      }
+
       window.speechSynthesis.cancel() // 先取消任何正在播放的语音
       window.speechSynthesis.speak(utterance)
-      setIsPlaying(true)
+      setPlayingMessageId(messageId)
     }
-  }
+  }, [playingMessageId, voiceType])
 
   const toggleRecording = () => {
     if (!isRecording) {
       // 检查浏览器是否支持语音识别
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition()
-        
-        recognition.lang = 'en-US'
-        recognition.continuous = true
-        recognition.interimResults = true
-        
+      if (!speechRecognition.isSupported()) {
+        // 浏览器不支持语音识别
         setIsRecording(true)
-        
-        let finalTranscript = ''
-        
-        recognition.onresult = (event: any) => {
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript + ' '
-            } else {
-              // 实时显示正在识别的文字
-              setInputText(transcript)
-            }
-          }
-        }
-        
-        recognition.onend = async () => {
+        setTimeout(() => {
+          setIsRecording(false)
+          setInputText('')
+        }, 1000)
+        return
+      }
+
+      setIsRecording(true)
+      setInputText('')
+      speechRecognition.reset()
+
+      // 设置语音识别回调
+      speechRecognition.setCallbacks({
+        onStart: () => {
+          console.log('语音识别已启动')
+        },
+        onInterimResult: (transcript: string) => {
+          // 实时显示正在识别的文字
+          setInputText(transcript)
+        },
+        onFinalResult: (transcript: string) => {
+          // 更新输入框显示最终识别结果
+          setInputText(transcript)
+        },
+        onError: (error: string) => {
+          console.error('语音识别错误:', error)
+          setIsRecording(false)
+          setInputText('')
+        },
+        onEnd: async () => {
+          const finalTranscript = speechRecognition.getFinalTranscript()
+
           // 录音结束时，如果有识别出的文字，自动发送
           if (finalTranscript.trim()) {
             const userMessage: Message = {
@@ -540,13 +518,14 @@ export default function Chat() {
               timestamp: Date.now(),
             }
             setMessages(prev => [...prev, userMessage])
-            
+            setInputText('')
+
             // 自动发送AI回复
             setIsLoading(true)
             try {
               // 调用豆包API
               const { response, corrections, suggestions } = await callDoubaoAPI(finalTranscript.trim(), topic?.titleEn || '', apiKey)
-              
+
               const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
@@ -554,8 +533,8 @@ export default function Chat() {
                 timestamp: Date.now(),
               }
 
-              setMessages(prev => prev.map(msg => 
-                msg.id === userMessage.id 
+              setMessages(prev => prev.map(msg =>
+                msg.id === userMessage.id
                   ? { ...msg, corrections, suggestions }
                   : msg
               ))
@@ -565,7 +544,7 @@ export default function Chat() {
               console.error('API调用失败:', error)
               // 失败时使用备用响应
               const { response, corrections, suggestions } = mockAIResponse(finalTranscript.trim(), topic?.titleEn || '')
-              
+
               const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
@@ -573,8 +552,8 @@ export default function Chat() {
                 timestamp: Date.now(),
               }
 
-              setMessages(prev => prev.map(msg => 
-                msg.id === userMessage.id 
+              setMessages(prev => prev.map(msg =>
+                msg.id === userMessage.id
                   ? { ...msg, corrections, suggestions }
                   : msg
               ))
@@ -583,33 +562,26 @@ export default function Chat() {
             } finally {
               setIsLoading(false)
             }
+          } else {
+            setInputText('')
           }
           setIsRecording(false)
-          setInputText('')
         }
-        
-        recognition.onerror = (event: any) => {
-          console.error('语音识别错误:', event.error)
-          setIsRecording(false)
-          setInputText('')
-        }
-        
-        recognition.start()
-      } else {
-        // 浏览器不支持语音识别
-        setIsRecording(true)
-        setTimeout(() => {
-          setIsRecording(false)
-          setInputText('')
-        }, 1000)
+      })
+
+      // 启动语音识别
+      const started = speechRecognition.start({
+        lang: 'en-US',
+        continuous: true,
+        interimResults: true
+      })
+
+      if (!started) {
+        setIsRecording(false)
       }
     } else {
       // 停止录音
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition()
-        recognition.stop()
-      }
+      speechRecognition.stop()
       setIsRecording(false)
     }
   }
@@ -672,7 +644,8 @@ export default function Chat() {
             message={message}
             onPlayAudio={handlePlayAudio}
             onShowCorrection={setSelectedMessage}
-            isPlaying={isPlaying}
+            playingMessageId={playingMessageId}
+            apiKey={apiKey}
           />
         ))}
         
