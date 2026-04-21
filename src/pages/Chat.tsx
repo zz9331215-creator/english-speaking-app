@@ -152,16 +152,21 @@ const MessageBubble = ({
     // 模拟翻译功能
     setTimeout(() => {
       const mockTranslations: Record<string, string> = {
-        'Hello! I\'m your English speaking practice partner. Today we\'ll practice the "Self Introduction" topic. 学习如何用英语介绍自己，包括姓名、职业、兴趣爱好等. You can start the conversation at any time, and I\'ll help you correct grammar errors and give improvement suggestions.': '你好！我是你的英语口语练习伙伴。今天我们将练习"自我介绍"话题。学习如何用英语介绍自己，包括姓名、职业、兴趣爱好等。你可以随时开始对话，我会帮你纠正语法错误并给出改进建议。',
-        'Hello! Im your English speaking practice partner. We can have a free conversation, and Ill help you correct grammar errors and give improvement suggestions. What would you like to talk about?': '你好！我是你的英语口语练习伙伴。我们可以自由对话，我会帮你纠正语法错误并给出改进建议。你想聊些什么呢？',
-        "That's interesting! Tell me more about that.": '那很有趣！告诉我更多关于那个的事情。',
-        "I see what you mean. Could you elaborate on that?": '我明白你的意思。你能详细说明一下吗？',
-        "Great point! What do you think about...": '很好的观点！你觉得...怎么样？',
-        "I understand. Let me share my perspective...": '我理解。让我分享我的观点...',
-        "That's a good way to put it! Have you considered...": '这样表达很好！你考虑过...吗？',
+        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Self Introduction" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"自我介绍"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
+        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Hobbies & Interests" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"兴趣爱好"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
+        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Weather" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"天气"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
+        'Hey there! I\'m so excited to chat with you today! 🎉 We\'re going to practice "Weekend Plans" together. Don\'t worry about making mistakes - that\'s how we learn! Let\'s start with you telling me a bit about yourself, or ask me anything!': '嘿，你好！我今天真的很兴奋能和你聊天！我们要一起练习"周末安排"。别担心犯错误——这就是我们学习的方式！让我们从你告诉我一些关于你自己的事情开始，或者问我任何问题！',
+        'Hey there! How are you doing today? 😊 I\'m really excited to practice English with you! Feel free to talk about anything you like - your day, your hobbies, what\'s on your mind... I\'m here to help you improve your English and have fun at the same time! What would you like to discuss?': '嘿，你好！你今天怎么样？我真的很兴奋能和你一起练习英语！随便聊你想聊的任何东西——你的一天，你的爱好，你在想什么...我在这里帮助你提高英语，同时也要玩得开心！你想讨论什么？',
+        "Oh wow, that's really interesting! I'd love to hear more about that. Can you tell me more? 😊": '哦哇，这真的很有趣！我想听更多关于那个的。你能告诉我更多吗？',
+        "I totally get what you're saying! That's such a cool perspective. What made you think about that?": '我完全理解你在说什么！这是一个很酷的观点。是什么让你想到那个的？',
+        "Haha, I love that! 😄 It's so great to chat with you. Can you share more details?": '哈哈哈，我太喜欢那个了！和你聊天真是太棒了。你能分享更多细节吗？',
+        "That's awesome! I really enjoy our conversation. Tell me, what's your favorite part about that?": '太棒了！我真的很享受我们的对话。告诉我，你最喜欢哪一部分？',
+        "I hear you! That's a great point. I've never thought about it that way before. What else can you share?": '我听到了！这是一个很好的观点。我以前从没那样想过。你还能分享什么？',
+        "Oh, that's fascinating! I'm learning so much from you. Can you tell me more? 🤔": '哦，那真是令人着迷！我从你这里学到了很多。你能告诉我更多吗？',
+        "That's wonderful! I love discussing topics like this. What's your experience been like?": '太棒了！我喜欢讨论这样的主题。你的经历是什么样的？',
       }
       
-      const translation = mockTranslations[message.content] || '这是一条英语消息的翻译。'
+      const translation = mockTranslations[message.content] || 'Sorry, this message cannot be translated at the moment.'
       setTranslated(translation)
       setShowTranslation(true)
       setIsTranslating(false)
@@ -342,7 +347,7 @@ export default function Chat() {
       id: 'welcome',
       role: 'assistant',
       content: topic 
-        ? `Hey there! I'm so excited to chat with you today! 🎉 We're going to practice "${topic.titleEn}" together. ${topic.description}. Don't worry about making mistakes - that's how we learn! Let's start with you telling me a bit about yourself, or ask me anything!`
+        ? `Hey there! I'm so excited to chat with you today! 🎉 We're going to practice "${topic.titleEn}" together. Don't worry about making mistakes - that's how we learn! Let's start with you telling me a bit about yourself, or ask me anything!`
         : `Hey there! How are you doing today? 😊 I'm really excited to practice English with you! Feel free to talk about anything you like - your day, your hobbies, what's on your mind... I'm here to help you improve your English and have fun at the same time! What would you like to discuss?`,
       timestamp: Date.now(),
     }
