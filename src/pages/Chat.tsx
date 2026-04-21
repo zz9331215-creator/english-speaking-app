@@ -17,9 +17,7 @@ import { getTopicById } from '../data/topics'
 import type { Message, GrammarCorrection } from '../types'
 
 // 豆包API调用函数
-const callDoubaoAPI = async (userMessage: string, topic: string | undefined): Promise<{ response: string; corrections: GrammarCorrection[]; suggestions: string[] }> => {
-  // 这里需要替换为实际的豆包API Key
-  const API_KEY = 'YOUR_DOBAO_API_KEY'
+const callDoubaoAPI = async (userMessage: string, topic: string | undefined, apiKey: string): Promise<{ response: string; corrections: GrammarCorrection[]; suggestions: string[] }> => {
   const API_URL = 'https://api.doubao.com/v1/chat/completions'
   
   try {
@@ -31,7 +29,7 @@ const callDoubaoAPI = async (userMessage: string, topic: string | undefined): Pr
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'doubao-1.0-pro-20240528',
@@ -346,6 +344,9 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [voiceType, setVoiceType] = useState('alloy')
+  const [apiKey, setApiKey] = useState('YOUR_DOBAO_API_KEY')
+  const [showSettings, setShowSettings] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -383,7 +384,7 @@ export default function Chat() {
 
     try {
       // 调用豆包API
-      const { response, corrections, suggestions } = await callDoubaoAPI(userMessage.content, topic?.titleEn || '')
+      const { response, corrections, suggestions } = await callDoubaoAPI(userMessage.content, topic?.titleEn || '', apiKey)
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -444,6 +445,16 @@ export default function Chat() {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'en-US'
       utterance.rate = 0.9
+      
+      // 设置语音音色
+      const voices = window.speechSynthesis.getVoices()
+      const selectedVoice = voices.find(voice => 
+        voice.name.toLowerCase().includes(voiceType) || 
+        voice.voiceURI.toLowerCase().includes(voiceType)
+      )
+      if (selectedVoice) {
+        utterance.voice = selectedVoice
+      }
       
       utterance.onend = () => {
         setIsPlaying(false)
@@ -585,9 +596,13 @@ export default function Chat() {
           >
             <RotateCcw className="w-5 h-5 text-gray-600" />
           </button>
-          <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-            <MoreHorizontal className="w-5 h-5 text-gray-600" />
-          </button>
+          <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+              title="设置"
+            >
+              <MoreHorizontal className="w-5 h-5 text-gray-600" />
+            </button>
         </div>
       </header>
 
@@ -620,6 +635,67 @@ export default function Chat() {
         
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="bg-white border-t border-gray-100 p-4 animate-slide-up">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-900">设置</h3>
+            <button 
+              onClick={() => setShowSettings(false)}
+              className="p-1 rounded-full hover:bg-gray-100"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+          
+          {/* API Key */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              豆包API Key
+            </label>
+            <input
+              type="text"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="输入你的豆包API Key"
+              className="w-full bg-gray-100 rounded-lg px-4 py-2 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              从豆包开放平台获取API Key: https://www.doubao.com/openapi
+            </p>
+          </div>
+          
+          {/* Voice Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              语音音色
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: 'alloy', label: 'Alloy' },
+                { value: 'samantha', label: 'Samantha' },
+                { value: 'jenny', label: 'Jenny' },
+                { value: 'alex', label: 'Alex' },
+                { value: 'matt', label: 'Matt' },
+                { value: 'nina', label: 'Nina' },
+              ].map((voice) => (
+                <button
+                  key={voice.value}
+                  onClick={() => setVoiceType(voice.value)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    voiceType === voice.value
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {voice.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Input Area */}
       <div className="bg-white border-t border-gray-100 p-4 safe-area-bottom">
