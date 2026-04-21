@@ -65,6 +65,31 @@ const MessageBubble = ({
   onShowCorrection: (message: Message) => void
 }) => {
   const isUser = message.role === 'user'
+  const [translated, setTranslated] = useState<string | null>(null)
+  const [isTranslating, setIsTranslating] = useState(false)
+  
+  const handleTranslate = async () => {
+    if (translated || isTranslating) return
+    
+    setIsTranslating(true)
+    
+    // 模拟翻译功能
+    setTimeout(() => {
+      const mockTranslations: Record<string, string> = {
+        'Hello! I\'m your English speaking practice partner. Today we\'ll practice the "Self Introduction" topic. 学习如何用英语介绍自己，包括姓名、职业、兴趣爱好等. You can start the conversation at any time, and I\'ll help you correct grammar errors and give improvement suggestions.': '你好！我是你的英语口语练习伙伴。今天我们将练习"自我介绍"话题。学习如何用英语介绍自己，包括姓名、职业、兴趣爱好等。你可以随时开始对话，我会帮你纠正语法错误并给出改进建议。',
+        'Hello! Im your English speaking practice partner. We can have a free conversation, and Ill help you correct grammar errors and give improvement suggestions. What would you like to talk about?': '你好！我是你的英语口语练习伙伴。我们可以自由对话，我会帮你纠正语法错误并给出改进建议。你想聊些什么呢？',
+        "That's interesting! Tell me more about that.": '那很有趣！告诉我更多关于那个的事情。',
+        "I see what you mean. Could you elaborate on that?": '我明白你的意思。你能详细说明一下吗？',
+        "Great point! What do you think about...": '很好的观点！你觉得...怎么样？',
+        "I understand. Let me share my perspective...": '我理解。让我分享我的观点...',
+        "That's a good way to put it! Have you considered...": '这样表达很好！你考虑过...吗？',
+      }
+      
+      const translation = mockTranslations[message.content] || '这是一条英语消息的翻译。'
+      setTranslated(translation)
+      setIsTranslating(false)
+    }, 500)
+  }
   
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''} animate-slide-up`}>
@@ -88,6 +113,15 @@ const MessageBubble = ({
             {message.content}
           </p>
           
+          {/* Translation */}
+          {translated && (
+            <div className={`mt-2 pt-2 border-t ${isUser ? 'border-white/20' : 'border-gray-100'}`}>
+              <p className={`text-sm ${isUser ? 'text-white/80' : 'text-gray-600'}`}>
+                {translated}
+              </p>
+            </div>
+          )}
+          
           {/* Correction indicator */}
           {isUser && message.corrections && message.corrections.length > 0 && (
             <button
@@ -104,12 +138,29 @@ const MessageBubble = ({
             {new Date(message.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
           </span>
           {!isUser && (
-            <button 
-              onClick={() => onPlayAudio(message.content)}
-              className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-            >
-              <Volume2 className="w-3.5 h-3.5 text-gray-600" />
-            </button>
+            <>
+              <button 
+                onClick={handleTranslate}
+                disabled={isTranslating}
+                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                title="翻译"
+              >
+                {isTranslating ? (
+                  <span className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                ) : translated ? (
+                  <span className="text-xs text-green-600 font-medium">已翻译</span>
+                ) : (
+                  <span className="text-xs text-gray-600 font-medium">翻译</span>
+                )}
+              </button>
+              <button 
+                onClick={() => onPlayAudio(message.content)}
+                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                title="播放"
+              >
+                <Volume2 className="w-3.5 h-3.5 text-gray-600" />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -212,8 +263,8 @@ export default function Chat() {
       id: 'welcome',
       role: 'assistant',
       content: topic 
-        ? `你好！我是你的英语口语练习伙伴。今天我们来练习"${topic.title}"这个话题。${topic.description}。你可以随时开始对话，我会帮你纠正语法错误并给出改进建议。`
-        : '你好！我是你的英语口语练习伙伴。我们可以自由对话，我会帮你纠正语法错误并给出改进建议。你想聊些什么呢？',
+        ? `Hello! I'm your English speaking practice partner. Today we'll practice the "${topic.titleEn}" topic. ${topic.description}. You can start the conversation at any time, and I'll help you correct grammar errors and give improvement suggestions.`
+        : 'Hello! Im your English speaking practice partner. We can have a free conversation, and Ill help you correct grammar errors and give improvement suggestions. What would you like to talk about?',
       timestamp: Date.now(),
     }
     setMessages([welcomeMessage])
