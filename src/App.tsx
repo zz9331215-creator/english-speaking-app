@@ -4,6 +4,7 @@ import Chat from './pages/Chat'
 import Topics from './pages/Topics'
 import Correction from './pages/Correction'
 import Profile from './pages/Profile'
+import History from './pages/History'
 import ShadowingList from './pages/ShadowingList'
 import ShadowingPractice from './pages/ShadowingPractice'
 import BottomNav from './components/BottomNav'
@@ -18,6 +19,7 @@ function App() {
         <Route path="/topics" element={<Topics />} />
         <Route path="/correction" element={<Correction />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/history" element={<History />} />
         <Route path="/shadowing" element={<ShadowingList />} />
         <Route path="/shadowing/:id" element={<ShadowingPractice />} />
         <Route path="*" element={<Navigate to="/" replace />} />

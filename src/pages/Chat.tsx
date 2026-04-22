@@ -15,12 +15,16 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  Wand2
+  Wand2,
+  Save,
+  Clock,
+  MessageSquare
 } from 'lucide-react'
 import { getTopicById } from '../data/topics'
 import { speechRecognition } from '../utils/speechRecognition'
 import { translateText } from '../utils/translation'
 import { addPracticeTime, addConversation, addMessage } from '../utils/userStats'
+import { saveConversation, createConversationHistory } from '../utils/conversationHistory'
 import type { Message, GrammarCorrection, GrammarResult, PolishResult } from '../types'
 
 // 调用AI大模型API（支持火山引擎/豆包/OpenAI兼容格式）
@@ -868,8 +872,10 @@ export default function Chat() {
     }
   }
   const [showSettings, setShowSettings] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const navigateRef = useRef(useNavigate())
 
   // 初始化欢迎消息，并记录对话统计
   useEffect(() => {
@@ -1259,11 +1265,44 @@ export default function Chat() {
       id: 'welcome',
       role: 'assistant',
       content: topic 
-        ? `你好！我是你的英语口语练习伙伴。今天我们来练习"${topic.title}"这个话题。${topic.description}。你可以随时开始对话，我会帮你纠正语法错误并给出改进建议。`
+        ? `你好！我是你的英语口语练习伙伴。今天我们来练习“${topic.title}”这个话题。${topic.description}。你可以随时开始对话，我会帮你纠正语法错误并给出改进建议。`
         : '你好！我是你的英语口语练习伙伴。我们可以自由对话，我会帮你纠正语法错误并给出改进建议。你想聊些什么呢？',
       timestamp: Date.now(),
     }
     setMessages([welcomeMessage])
+  }
+  
+  // 处理返回按钮点击
+  const handleBack = () => {
+    // 只有当对话有实际内容（除了欢迎消息外还有消息）时才询问
+    const realMessages = messages.filter(m => m.id !== 'welcome')
+    if (realMessages.length > 0) {
+      setShowSaveDialog(true)
+    } else {
+      navigate(-1)
+    }
+  }
+  
+  // 保存并退出
+  const handleSaveAndExit = () => {
+    const topicIdStr = topicId || 'free-chat'
+    const topicName = topic?.title || '自由对话'
+    const topicNameEn = topic?.titleEn || 'Free Chat'
+      
+    const history = createConversationHistory(
+      topicIdStr,
+      topicName,
+      topicNameEn,
+      messages
+    )
+      
+    saveConversation(history)
+    navigate(-1)
+  }
+  
+  // 不保存退出
+  const handleExitWithoutSave = () => {
+    navigate(-1)
   }
 
   return (
@@ -1272,7 +1311,7 @@ export default function Chat() {
       <header className="bg-white px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
@@ -1672,6 +1711,55 @@ export default function Chat() {
           modelName={modelName}
           onPlayAudio={handlePlayAudio}
         />
+      )}
+
+      {/* Save Dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4 animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full animate-slide-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+                <Save className="w-6 h-6 text-primary-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-gray-900">保存对话？</h3>
+                <p className="text-sm text-gray-500">是否保存本次对话记录？</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">{topic?.title || '自由对话'}</span>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>{messages.length} 条消息</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{Math.round((messages[messages.length - 1]?.timestamp - messages[0]?.timestamp) / 60000)} 分钟</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleExitWithoutSave}
+                className="flex-1 py-3 px-4 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                不保存
+              </button>
+              <button
+                onClick={handleSaveAndExit}
+                className="flex-1 py-3 px-4 rounded-xl bg-primary-500 text-white font-medium hover:bg-primary-600 transition-colors"
+              >
+                保存并退出
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

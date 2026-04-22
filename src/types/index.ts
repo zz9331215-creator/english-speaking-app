@@ -62,3 +62,14 @@ export interface Conversation {
   startedAt: number
   lastMessageAt: number
 }
+
+export interface ConversationHistory {
+  id: string
+  topicId: string
+  topicName: string
+  topicNameEn: string
+  messages: Message[]
+  startedAt: number
+  lastMessageAt: number
+  messageCount: number
+}

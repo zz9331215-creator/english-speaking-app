@@ -1,67 +1,38 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Settings,
   ChevronRight,
   Trophy,
-  Flame,
   Clock,
   MessageSquare,
-  Star,
   Zap,
-  CheckCircle2,
-  Sparkles,
   RotateCcw,
+  History as HistoryIcon,
 } from 'lucide-react'
 import {
   getUserStats,
-  getStreakDays,
-  hasCheckedInToday,
-  checkIn,
-  getEncouragement,
   type UserStats,
   resetUserStats,
 } from '../utils/userStats'
 
 export default function Profile() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<UserStats>(getUserStats())
-  const [streak, setStreak] = useState(0)
-  const [checkedIn, setCheckedIn] = useState(false)
-  const [showEncourage, setShowEncourage] = useState(false)
-  const [encourageMsg, setEncourageMsg] = useState('')
-  const [newStars, setNewStars] = useState(0)
 
   const refreshData = useCallback(() => {
     const s = getUserStats()
     setStats(s)
-    setStreak(getStreakDays())
-    setCheckedIn(hasCheckedInToday())
   }, [])
 
   useEffect(() => {
     refreshData()
   }, [refreshData])
 
-  // 打卡
-  const handleCheckIn = () => {
-    const result = checkIn()
-    if (result.success) {
-      setEncourageMsg(result.message)
-      setNewStars(result.newStars)
-      setShowEncourage(true)
-      refreshData()
-    } else {
-      setEncourageMsg(result.message)
-      setNewStars(0)
-      setShowEncourage(true)
-    }
-  }
-
   // 统计卡片数据
   const statCards = [
-    { label: '连续打卡', value: String(streak), unit: '天', icon: Flame, color: 'text-orange-500', bgColor: 'bg-orange-50' },
     { label: '对话次数', value: String(stats.totalConversations), unit: '次', icon: MessageSquare, color: 'text-primary-500', bgColor: 'bg-primary-50' },
     { label: '练习时长', value: String((stats.totalPracticeTime / 60).toFixed(1)), unit: '小时', icon: Clock, color: 'text-green-500', bgColor: 'bg-green-50' },
-    { label: '获得星星', value: String(stats.stars), unit: '颗', icon: Star, color: 'text-yellow-500', bgColor: 'bg-yellow-50' },
   ]
 
   // 加入天数
@@ -119,35 +90,6 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* 打卡按钮 */}
-        <button
-          onClick={handleCheckIn}
-          disabled={checkedIn}
-          className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
-            checkedIn
-              ? 'bg-green-100 text-green-700 cursor-default'
-              : 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-md hover:shadow-lg active:scale-[0.98]'
-          }`}
-        >
-          {checkedIn ? (
-            <>
-              <CheckCircle2 className="w-5 h-5" />
-              今日已打卡
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              立即打卡
-            </>
-          )}
-        </button>
-
-        {!checkedIn && (
-          <p className="text-xs text-gray-500 text-center -mt-3">
-            {getEncouragement()}
-          </p>
-        )}
-
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           {statCards.map((stat) => {
@@ -164,29 +106,21 @@ export default function Profile() {
           })}
         </div>
 
-        {/* Settings List */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {[
-            { label: '隐私设置', icon: Settings },
-            { label: '帮助与反馈', icon: MessageSquare },
-          ].map((item, index) => {
-            const Icon = item.icon
-            return (
-              <button
-                key={item.label}
-                className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
-                  index !== 3 ? 'border-b border-gray-100' : ''
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="w-5 h-5 text-gray-500" />
-                  <span className="text-gray-900">{item.label}</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </button>
-            )
-          })}
-        </div>
+        {/* History Entry */}
+        <button
+          onClick={() => navigate('/history')}
+          className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-4 group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center flex-shrink-0 group-hover:from-primary-200 group-hover:to-primary-300 transition-all duration-200">
+            <HistoryIcon className="w-6 h-6 text-primary-600" />
+          </div>
+          <div className="flex-1 text-left">
+            <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">历史对话</h3>
+            <p className="text-xs text-gray-500">查看和回顾之前的对话练习</p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+
 
         {/* Debug: 重置数据 */}
         <button
@@ -202,33 +136,6 @@ export default function Profile() {
           重置学习数据
         </button>
       </div>
-
-      {/* 打卡成功弹窗 */}
-      {showEncourage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setShowEncourage(false)}>
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
-            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full flex items-center justify-center">
-              <Sparkles className="w-10 h-10 text-orange-500" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">打卡成功！</h3>
-            <p className="text-gray-600 mb-4">{encourageMsg}</p>
-            {newStars > 0 && (
-              <div className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-full text-sm font-medium">
-                <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                +{newStars} 颗星星
-              </div>
-            )}
-            <button
-              onClick={() => {
-                setShowEncourage(false)
-              }}
-              className="w-full mt-6 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors"
-            >
-              太棒了！
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
