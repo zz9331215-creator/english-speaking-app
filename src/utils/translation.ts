@@ -1,6 +1,6 @@
 /**
  * 翻译服务
- * 支持使用豆包API进行翻译，同时提供客户端备用翻译方案
+ * 支持使用硅基流动/OpenAI兼容API进行翻译，同时提供客户端备用翻译方案
  */
 
 // 翻译缓存，避免重复请求
@@ -574,11 +574,15 @@ const sentencePatterns: Array<{ pattern: RegExp; replacement: string }> = [
 ]
 
 /**
- * 使用豆包API进行翻译
+ * 使用硅基流动/OpenAI兼容API进行翻译
  */
-async function translateWithAPI(text: string, apiKey: string): Promise<string | null> {
+async function translateWithAPI(text: string, apiKey: string, apiBaseUrl?: string, modelName?: string): Promise<string | null> {
   try {
-    const API_URL = 'https://api.doubao.com/v1/chat/completions'
+    const baseUrl = apiBaseUrl || 'https://api.siliconflow.cn/v1'
+    const API_URL = baseUrl.endsWith('/')
+      ? `${baseUrl}chat/completions`
+      : `${baseUrl}/chat/completions`
+    const model = modelName || 'deepseek-ai/DeepSeek-V3'
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -587,11 +591,11 @@ async function translateWithAPI(text: string, apiKey: string): Promise<string | 
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'doubao-1.0-pro-20240528',
+        model: model,
         messages: [
           {
             role: 'system',
-            content: 'You are a translator. Translate the following English text to Chinese. Only return the translation, no explanations.'
+            content: 'You are a professional English-to-Chinese translator. Translate the following English text to fluent, natural Chinese. Only return the translation, no explanations or extra text. Keep the tone and style consistent with the original.'
           },
           { role: 'user', content: text }
         ],
@@ -668,21 +672,26 @@ function translateWithDictionary(text: string): string {
  * 翻译文本（英译中）
  * 优先使用API翻译，失败时使用客户端备用翻译
  */
-export async function translateText(text: string, apiKey?: string): Promise<string> {
+export async function translateText(
+  text: string,
+  apiKey?: string,
+  apiBaseUrl?: string,
+  modelName?: string
+): Promise<string> {
   if (!text || typeof text !== 'string') return ''
 
   const trimmedText = text.trim()
   if (!trimmedText) return ''
 
   // 检查缓存
-  const cacheKey = trimmedText.toLowerCase()
+  const cacheKey = `${trimmedText.toLowerCase()}|${apiBaseUrl}|${modelName}`
   if (translationCache.has(cacheKey)) {
     return translationCache.get(cacheKey)!
   }
 
   // 如果提供了API key，尝试使用API翻译
-  if (apiKey && apiKey.startsWith('ark-')) {
-    const apiResult = await translateWithAPI(trimmedText, apiKey)
+  if (apiKey) {
+    const apiResult = await translateWithAPI(trimmedText, apiKey, apiBaseUrl, modelName)
     if (apiResult) {
       translationCache.set(cacheKey, apiResult)
       return apiResult

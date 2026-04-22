@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  ArrowLeft, 
-  Mic, 
+import {
+  ArrowLeft,
+  Mic,
   Pause,
   RotateCcw,
   CheckCircle2,
@@ -12,9 +12,18 @@ import {
   ChevronRight,
   Star,
   TrendingUp,
-  Award
+  Award,
+  ChevronLeft,
+  BookOpen,
 } from 'lucide-react'
+import { getDailyQuoteByDate } from '../data/topics'
 import { speechRecognition } from '../utils/speechRecognition'
+import { addReading, addPracticeTime } from '../utils/userStats'
+import {
+  getMonthCheckInDates,
+  getDaysInMonth,
+  getFirstDayOfMonth,
+} from '../utils/userStats'
 import type { GrammarCorrection } from '../types'
 
 interface PracticeSentence {
@@ -25,40 +34,14 @@ interface PracticeSentence {
 }
 
 const practiceSentences: PracticeSentence[] = [
-  {
-    id: '1',
-    english: 'The early bird catches the worm.',
-    chinese: '早起的鸟儿有虫吃。',
-    difficulty: 'easy'
-  },
-  {
-    id: '2',
-    english: 'Actions speak louder than words.',
-    chinese: '行动胜于言辞。',
-    difficulty: 'easy'
-  },
-  {
-    id: '3',
-    english: 'Where there is a will, there is a way.',
-    chinese: '有志者事竟成。',
-    difficulty: 'medium'
-  },
-  {
-    id: '4',
-    english: 'The only way to do great work is to love what you do.',
-    chinese: '做伟大工作的唯一方法就是热爱你所做的事情。',
-    difficulty: 'medium'
-  },
-  {
-    id: '5',
-    english: 'Success is not final, failure is not fatal: it is the courage to continue that counts.',
-    chinese: '成功不是终点，失败也不是致命的：重要的是继续前进的勇气。',
-    difficulty: 'hard'
-  }
+  { id: '1', english: 'The early bird catches the worm.', chinese: '早起的鸟儿有虫吃。', difficulty: 'easy' },
+  { id: '2', english: 'Actions speak louder than words.', chinese: '行动胜于言辞。', difficulty: 'easy' },
+  { id: '3', english: 'Where there is a will, there is a way.', chinese: '有志者事竟成。', difficulty: 'medium' },
+  { id: '4', english: 'The only way to do great work is to love what you do.', chinese: '做伟大工作的唯一方法就是热爱你所做的事情。', difficulty: 'medium' },
+  { id: '5', english: 'Success is not final, failure is not fatal: it is the courage to continue that counts.', chinese: '成功不是终点，失败也不是致命的：重要的是继续前进的勇气。', difficulty: 'hard' },
 ]
 
-// 模拟语法分析
-const analyzeSentence = (spoken: string, original: string): { 
+const analyzeSentence = (spoken: string, original: string): {
   score: number
   corrections: GrammarCorrection[]
   suggestions: string[]
@@ -68,36 +51,40 @@ const analyzeSentence = (spoken: string, original: string): {
 } => {
   const corrections: GrammarCorrection[] = []
   const suggestions: string[] = []
-  
-  // 简单的模拟分析
   if (spoken !== original) {
-    corrections.push({
-      original: spoken,
-      corrected: original,
-      explanation: '建议按照原文准确朗读',
-      type: 'pronunciation'
-    })
+    corrections.push({ original: spoken, corrected: original, explanation: '建议按照原文准确朗读', type: 'pronunciation' })
   }
-  
   if (spoken.split(' ').length < original.split(' ').length * 0.8) {
     suggestions.push('尝试完整地读出整个句子')
   }
-  
   suggestions.push('注意语调和停顿')
   suggestions.push('练习连读技巧')
-  
   return {
     score: Math.floor(Math.random() * 20) + 75,
     corrections,
     suggestions,
     accuracy: Math.floor(Math.random() * 15) + 80,
     fluency: Math.floor(Math.random() * 20) + 75,
-    completeness: Math.floor(Math.random() * 10) + 85
+    completeness: Math.floor(Math.random() * 10) + 85,
   }
 }
 
 export default function Correction() {
   const navigate = useNavigate()
+  const [mode, setMode] = useState<'home' | 'practice'>('home')
+
+  // ===== 首页状态 =====
+  const today = new Date()
+  const todayStr = today.toISOString().split('T')[0]
+  const [selectedDate, setSelectedDate] = useState(todayStr)
+  const [calYear, setCalYear] = useState(today.getFullYear())
+  const [calMonth, setCalMonth] = useState(today.getMonth())
+  const [monthCheckIns, setMonthCheckIns] = useState<number[]>([])
+  const [showExplanation, setShowExplanation] = useState(false)
+
+  const dailyQuote = getDailyQuoteByDate(selectedDate)
+
+  // ===== 跟读练习状态 =====
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [hasRecorded, setHasRecorded] = useState(false)
@@ -108,15 +95,60 @@ export default function Correction() {
 
   const currentSentence = practiceSentences[currentIndex]
 
+  // 练习时长计时器
+  useEffect(() => {
+    let startTime = Date.now()
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 60000)
+      if (elapsed >= 1) {
+        addPracticeTime(1)
+        startTime = Date.now()
+      }
+    }, 60000)
+    return () => {
+      clearInterval(interval)
+      const totalMinutes = Math.floor((Date.now() - startTime) / 60000)
+      if (totalMinutes >= 1) addPracticeTime(totalMinutes)
+    }
+  }, [])
+
+  // 日历数据更新
+  useEffect(() => {
+    setMonthCheckIns(getMonthCheckInDates(calYear, calMonth))
+  }, [calYear, calMonth])
+
+  // 日历导航
+  const prevMonth = () => {
+    if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1) }
+    else { setCalMonth(calMonth - 1) }
+  }
+  const nextMonth = () => {
+    if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1) }
+    else { setCalMonth(calMonth + 1) }
+  }
+
+  // 日历数据
+  const daysInMonth = getDaysInMonth(calYear, calMonth)
+  const firstDay = getFirstDayOfMonth(calYear, calMonth)
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const isCurrentMonth = calYear === today.getFullYear() && calMonth === today.getMonth()
+  const todayDate = today.getDate()
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+  // 选择日期
+  const selectDate = (day: number) => {
+    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    setSelectedDate(dateStr)
+  }
+
+  // ===== 跟读练习功能 =====
   const handlePlayAudio = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
-      // 如果正在播放，先停止
       if (isPlaying) {
         window.speechSynthesis.cancel()
         setIsPlaying(false)
         return
       }
-
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'en-US'
       utterance.rate = 0.8
@@ -133,19 +165,17 @@ export default function Correction() {
     setShowAnalysis(true)
     setHasRecorded(true)
     setIsRecording(false)
+    addReading(result.score)
   }, [currentSentence])
 
   const toggleRecording = () => {
     if (!isRecording) {
-      // 检查浏览器是否支持语音识别
       if (!speechRecognition.isSupported()) {
-        // 浏览器不支持，使用模拟模式
         setIsRecording(true)
         setHasRecorded(false)
         setAnalysisResult(null)
         setShowAnalysis(false)
         setRecognizedText('')
-
         setTimeout(() => {
           const mockSpoken = currentSentence.english
           setRecognizedText(mockSpoken)
@@ -153,29 +183,17 @@ export default function Correction() {
         }, 3000)
         return
       }
-
       setIsRecording(true)
       setHasRecorded(false)
       setAnalysisResult(null)
       setShowAnalysis(false)
       setRecognizedText('')
       speechRecognition.reset()
-
-      // 设置语音识别回调
       speechRecognition.setCallbacks({
-        onStart: () => {
-          console.log('语音识别已启动')
-        },
-        onInterimResult: (transcript: string) => {
-          setRecognizedText(transcript)
-        },
-        onFinalResult: (transcript: string) => {
-          setRecognizedText(transcript)
-        },
-        onError: (error: string) => {
-          console.error('语音识别错误:', error)
-          setIsRecording(false)
-        },
+        onStart: () => {},
+        onInterimResult: (transcript: string) => setRecognizedText(transcript),
+        onFinalResult: (transcript: string) => setRecognizedText(transcript),
+        onError: () => setIsRecording(false),
         onEnd: () => {
           const finalTranscript = speechRecognition.getFinalTranscript()
           if (finalTranscript.trim()) {
@@ -184,21 +202,11 @@ export default function Correction() {
           } else {
             setIsRecording(false)
           }
-        }
+        },
       })
-
-      // 启动语音识别
-      const started = speechRecognition.start({
-        lang: 'en-US',
-        continuous: false,
-        interimResults: true
-      })
-
-      if (!started) {
-        setIsRecording(false)
-      }
+      const started = speechRecognition.start({ lang: 'en-US', continuous: false, interimResults: true })
+      if (!started) setIsRecording(false)
     } else {
-      // 停止录音
       speechRecognition.stop()
       const finalTranscript = speechRecognition.getFinalTranscript()
       if (finalTranscript.trim()) {
@@ -233,7 +241,6 @@ export default function Correction() {
       default: return 'bg-gray-100 text-gray-700'
     }
   }
-
   const getDifficultyText = (difficulty: string) => {
     switch (difficulty) {
       case 'easy': return '简单'
@@ -243,14 +250,142 @@ export default function Correction() {
     }
   }
 
+  // ===== 首页视图 =====
+  if (mode === 'home') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white px-4 py-4 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(-1)}
+                className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-700" />
+              </button>
+              <h1 className="font-bold text-gray-900">每日晨读</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <Volume2 className="w-5 h-5 text-gray-600" />
+              </button>
+              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <BookOpen className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="p-4 space-y-4">
+          {/* Calendar */}
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                <ChevronLeft className="w-5 h-5 text-gray-500" />
+              </button>
+              <span className="text-base font-bold text-gray-900">
+                {calYear} {monthNames[calMonth]}
+              </span>
+              <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                <ChevronRight className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Week days */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {weekDays.map((d) => (
+                <div key={d} className="text-center text-xs text-gray-400 py-1">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Days */}
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: firstDay }).map((_, i) => (
+                <div key={`empty-${i}`} className="aspect-square" />
+              ))}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1
+                const isCheckedIn = monthCheckIns.includes(day)
+                const isToday = isCurrentMonth && day === todayDate
+                const isSelected = selectedDate === `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                return (
+                  <button
+                    key={day}
+                    onClick={() => selectDate(day)}
+                    className={`aspect-square flex items-center justify-center rounded-lg text-sm font-medium transition-all ${
+                      isSelected
+                        ? 'bg-primary-500 text-white shadow-md'
+                        : isToday
+                        ? 'border-2 border-primary-500 text-primary-700'
+                        : isCheckedIn
+                        ? 'bg-primary-100 text-primary-700'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {isToday ? '今' : day}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Daily Quote Card */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <p className="text-xl font-bold text-gray-900 leading-relaxed mb-3">
+              {dailyQuote.english}
+            </p>
+            <p className="text-gray-500 mb-4">
+              {dailyQuote.chinese}
+            </p>
+            {dailyQuote.author && (
+              <p className="text-sm text-gray-400 mb-4">—— {dailyQuote.author}</p>
+            )}
+
+            {/* Explanation Toggle */}
+            <button
+              onClick={() => setShowExplanation(!showExplanation)}
+              className="flex items-center gap-2 text-sm text-gray-600 mb-4"
+            >
+              <BookOpen className="w-4 h-4" />
+              讲解
+              <ChevronRight className={`w-4 h-4 transition-transform ${showExplanation ? 'rotate-90' : ''}`} />
+            </button>
+
+            {showExplanation && (
+              <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium text-gray-800">重点词汇：</span>
+                  这句话提醒我们{dailyQuote.english.length > 50 ? '要珍惜每一个当下' : '要保持积极的心态'}。
+                  朗读时请注意语调和停顿，体会作者想要表达的情感。
+                </p>
+              </div>
+            )}
+
+            {/* Start Button */}
+            <button
+              onClick={() => setMode('practice')}
+              className="w-full py-4 bg-primary-500 text-white rounded-xl font-bold text-base hover:bg-primary-600 transition-colors shadow-md shadow-primary-200"
+            >
+              开始跟读
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ===== 跟读练习视图 =====
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white px-4 py-4 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => navigate(-1)}
+            <button
+              onClick={() => setMode('home')}
               className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />

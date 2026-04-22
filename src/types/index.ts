@@ -1,3 +1,14 @@
+export interface GrammarResult {
+  isCorrect: boolean
+  errors: string[]
+}
+
+export interface PolishResult {
+  casual: string
+  formal: string
+  explanation: string
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -5,6 +16,9 @@ export interface Message {
   timestamp: number
   corrections?: GrammarCorrection[]
   suggestions?: string[]
+  showContent?: boolean
+  grammarResult?: GrammarResult
+  polishResult?: PolishResult
 }
 
 export interface GrammarCorrection {

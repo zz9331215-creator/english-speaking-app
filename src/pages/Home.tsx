@@ -1,8 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { 
   MessageCircle, 
-  BookOpen, 
-  Mic, 
   Sparkles,
   ChevronRight,
   User,
@@ -13,7 +11,7 @@ import {
   Coffee,
   Stethoscope,
   Home as HomeIcon,
-  Flame
+  Flame,
 } from 'lucide-react'
 import { getDailyQuote, topics } from '../data/topics'
 import type { Topic } from '../types'
@@ -166,23 +164,9 @@ export default function Home() {
           />
           <FeatureCard
             icon={Sparkles}
-            title="自定义对话"
-            subtitle="设置场景"
+            title="话题对话"
+            subtitle="场景练习"
             color="bg-gradient-to-br from-purple-50 to-purple-100"
-            onClick={() => navigate('/topics')}
-          />
-          <FeatureCard
-            icon={Mic}
-            title="自定义跟读"
-            subtitle="听读一体"
-            color="bg-gradient-to-br from-green-50 to-green-100"
-            onClick={() => navigate('/correction')}
-          />
-          <FeatureCard
-            icon={BookOpen}
-            title="功能实验室"
-            subtitle="更多功能"
-            color="bg-gradient-to-br from-orange-50 to-orange-100"
             onClick={() => navigate('/topics')}
           />
         </div>

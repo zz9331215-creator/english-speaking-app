@@ -1,80 +1,76 @@
-
-import { 
-  Settings, 
-  ChevronRight, 
-  Trophy, 
-  Flame, 
-  Clock, 
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Settings,
+  ChevronRight,
+  Trophy,
+  Flame,
+  Clock,
   MessageSquare,
   Star,
-  Crown,
   Zap,
-  BookOpen,
-  Target,
-  Calendar,
   CheckCircle2,
-  Volume2
+  Sparkles,
+  RotateCcw,
 } from 'lucide-react'
-
-interface Achievement {
-  id: string
-  title: string
-  description: string
-  icon: React.ElementType
-  unlocked: boolean
-  progress?: number
-}
-
-const achievements: Achievement[] = [
-  {
-    id: '1',
-    title: '初出茅庐',
-    description: '完成首次对话练习',
-    icon: MessageSquare,
-    unlocked: true,
-  },
-  {
-    id: '2',
-    title: '坚持不懈',
-    description: '连续练习7天',
-    icon: Flame,
-    unlocked: true,
-    progress: 100,
-  },
-  {
-    id: '3',
-    title: '话题达人',
-    description: '完成10个不同话题的对话',
-    icon: BookOpen,
-    unlocked: false,
-    progress: 60,
-  },
-  {
-    id: '4',
-    title: '完美发音',
-    description: '晨读获得95分以上',
-    icon: Star,
-    unlocked: false,
-    progress: 80,
-  },
-  {
-    id: '5',
-    title: '口语大师',
-    description: '累计对话100句',
-    icon: Crown,
-    unlocked: false,
-    progress: 45,
-  },
-]
-
-const stats = [
-  { label: '连续打卡', value: '12', unit: '天', icon: Flame, color: 'text-orange-500', bgColor: 'bg-orange-50' },
-  { label: '对话次数', value: '48', unit: '次', icon: MessageSquare, color: 'text-primary-500', bgColor: 'bg-primary-50' },
-  { label: '练习时长', value: '16.5', unit: '小时', icon: Clock, color: 'text-green-500', bgColor: 'bg-green-50' },
-  { label: '获得星星', value: '156', unit: '颗', icon: Star, color: 'text-yellow-500', bgColor: 'bg-yellow-50' },
-]
+import {
+  getUserStats,
+  getStreakDays,
+  hasCheckedInToday,
+  checkIn,
+  getEncouragement,
+  type UserStats,
+  resetUserStats,
+} from '../utils/userStats'
 
 export default function Profile() {
+  const [stats, setStats] = useState<UserStats>(getUserStats())
+  const [streak, setStreak] = useState(0)
+  const [checkedIn, setCheckedIn] = useState(false)
+  const [showEncourage, setShowEncourage] = useState(false)
+  const [encourageMsg, setEncourageMsg] = useState('')
+  const [newStars, setNewStars] = useState(0)
+
+  const refreshData = useCallback(() => {
+    const s = getUserStats()
+    setStats(s)
+    setStreak(getStreakDays())
+    setCheckedIn(hasCheckedInToday())
+  }, [])
+
+  useEffect(() => {
+    refreshData()
+  }, [refreshData])
+
+  // 打卡
+  const handleCheckIn = () => {
+    const result = checkIn()
+    if (result.success) {
+      setEncourageMsg(result.message)
+      setNewStars(result.newStars)
+      setShowEncourage(true)
+      refreshData()
+    } else {
+      setEncourageMsg(result.message)
+      setNewStars(0)
+      setShowEncourage(true)
+    }
+  }
+
+  // 统计卡片数据
+  const statCards = [
+    { label: '连续打卡', value: String(streak), unit: '天', icon: Flame, color: 'text-orange-500', bgColor: 'bg-orange-50' },
+    { label: '对话次数', value: String(stats.totalConversations), unit: '次', icon: MessageSquare, color: 'text-primary-500', bgColor: 'bg-primary-50' },
+    { label: '练习时长', value: String((stats.totalPracticeTime / 60).toFixed(1)), unit: '小时', icon: Clock, color: 'text-green-500', bgColor: 'bg-green-50' },
+    { label: '获得星星', value: String(stats.stars), unit: '颗', icon: Star, color: 'text-yellow-500', bgColor: 'bg-yellow-50' },
+  ]
+
+  // 加入天数
+  const joinDays = Math.max(1, Math.floor((Date.now() - new Date(stats.joinDate).getTime()) / (1000 * 60 * 60 * 24)))
+
+  // 等级计算
+  const level = Math.min(20, Math.floor(stats.stars / 50) + 1)
+  const nextLevelStars = level * 50
+  const levelProgress = Math.min(100, ((stats.stars % 50) / 50) * 100)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -97,7 +93,7 @@ export default function Profile() {
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-1">英语学习者</h2>
-              <p className="text-white/80 text-sm">已加入 30 天</p>
+              <p className="text-white/80 text-sm">已加入 {joinDays} 天</p>
             </div>
           </div>
 
@@ -107,21 +103,54 @@ export default function Profile() {
                 <Trophy className="w-5 h-5 text-yellow-300" />
                 <span className="text-sm text-white/80">当前等级</span>
               </div>
-              <p className="text-2xl font-bold">Level 5</p>
+              <p className="text-2xl font-bold">Level {level}</p>
+              <div className="mt-2 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full bg-yellow-300 rounded-full transition-all" style={{ width: `${levelProgress}%` }} />
+              </div>
+              <p className="text-xs text-white/60 mt-1">{stats.stars}/{nextLevelStars} 星星升级</p>
             </div>
             <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-5 h-5 text-yellow-300" />
                 <span className="text-sm text-white/80">学习积分</span>
               </div>
-              <p className="text-2xl font-bold">2,580</p>
+              <p className="text-2xl font-bold">{stats.stars.toLocaleString()}</p>
             </div>
           </div>
         </div>
 
+        {/* 打卡按钮 */}
+        <button
+          onClick={handleCheckIn}
+          disabled={checkedIn}
+          className={`w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all ${
+            checkedIn
+              ? 'bg-green-100 text-green-700 cursor-default'
+              : 'bg-gradient-to-r from-primary-500 to-accent-500 text-white shadow-md hover:shadow-lg active:scale-[0.98]'
+          }`}
+        >
+          {checkedIn ? (
+            <>
+              <CheckCircle2 className="w-5 h-5" />
+              今日已打卡
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-5 h-5" />
+              立即打卡
+            </>
+          )}
+        </button>
+
+        {!checkedIn && (
+          <p className="text-xs text-gray-500 text-center -mt-3">
+            {getEncouragement()}
+          </p>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          {stats.map((stat) => {
+          {statCards.map((stat) => {
             const Icon = stat.icon
             return (
               <div key={stat.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
@@ -135,112 +164,9 @@ export default function Profile() {
           })}
         </div>
 
-        {/* Learning Progress */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-primary-500" />
-              <h3 className="font-bold text-gray-900">本周目标</h3>
-            </div>
-            <span className="text-sm text-primary-600 font-medium">3/5 完成</span>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">完成3次对话练习</p>
-                <p className="text-xs text-gray-500">已完成</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="w-4 h-4 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">晨读打卡5天</p>
-                <p className="text-xs text-gray-500">已完成</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <div className="w-4 h-4 rounded-full border-2 border-gray-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">尝试2个新话题</p>
-                <p className="text-xs text-gray-500">进行中 1/2</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Achievements */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">成就徽章</h3>
-            <button className="text-sm text-primary-600 font-medium flex items-center gap-1">
-              查看全部
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-          
-          <div className="space-y-3">
-            {achievements.map((achievement) => {
-              const Icon = achievement.icon
-              return (
-                <div
-                  key={achievement.id}
-                  className={`bg-white rounded-2xl p-4 border shadow-sm flex items-center gap-4 ${
-                    achievement.unlocked ? 'border-gray-100' : 'border-gray-100 opacity-70'
-                  }`}
-                >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                    achievement.unlocked
-                      ? 'bg-gradient-to-br from-yellow-100 to-orange-100'
-                      : 'bg-gray-100'
-                  }`}>
-                    <Icon className={`w-7 h-7 ${
-                      achievement.unlocked ? 'text-orange-500' : 'text-gray-400'
-                    }`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold text-gray-900">{achievement.title}</h4>
-                      {achievement.unlocked && (
-                        <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
-                          已获得
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">{achievement.description}</p>
-                    {!achievement.unlocked && achievement.progress !== undefined && (
-                      <div className="mt-2">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-500">进度</span>
-                          <span className="text-primary-600 font-medium">{achievement.progress}%</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary-500 rounded-full transition-all duration-500"
-                            style={{ width: `${achievement.progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
         {/* Settings List */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {[
-            { label: '学习提醒', icon: Calendar },
-            { label: '发音设置', icon: Volume2 },
             { label: '隐私设置', icon: Settings },
             { label: '帮助与反馈', icon: MessageSquare },
           ].map((item, index) => {
@@ -261,7 +187,48 @@ export default function Profile() {
             )
           })}
         </div>
+
+        {/* Debug: 重置数据 */}
+        <button
+          onClick={() => {
+            if (confirm('确定要重置所有学习数据吗？')) {
+              resetUserStats()
+              refreshData()
+            }
+          }}
+          className="w-full py-2 text-xs text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1 transition-colors"
+        >
+          <RotateCcw className="w-3 h-3" />
+          重置学习数据
+        </button>
       </div>
+
+      {/* 打卡成功弹窗 */}
+      {showEncourage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setShowEncourage(false)}>
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full flex items-center justify-center">
+              <Sparkles className="w-10 h-10 text-orange-500" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">打卡成功！</h3>
+            <p className="text-gray-600 mb-4">{encourageMsg}</p>
+            {newStars > 0 && (
+              <div className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-full text-sm font-medium">
+                <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                +{newStars} 颗星星
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setShowEncourage(false)
+              }}
+              className="w-full mt-6 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors"
+            >
+              太棒了！
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

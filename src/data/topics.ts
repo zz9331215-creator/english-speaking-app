@@ -164,41 +164,26 @@ export const topics: Topic[] = [
 ]
 
 export const dailyQuotes: DailyQuote[] = [
-  {
-    id: '1',
-    english: 'The only way to do great work is to love what you do.',
-    chinese: '做伟大的工作的唯一方法就是热爱你所做的事情。',
-    author: 'Steve Jobs',
-    date: '2026-04-21'
-  },
-  {
-    id: '2',
-    english: 'Life is what happens when you\'re busy making other plans.',
-    chinese: '生活就是当你忙于制定其他计划时发生的事情。',
-    author: 'John Lennon',
-    date: '2026-04-22'
-  },
-  {
-    id: '3',
-    english: 'The future belongs to those who believe in the beauty of their dreams.',
-    chinese: '未来属于那些相信梦想之美的人。',
-    author: 'Eleanor Roosevelt',
-    date: '2026-04-23'
-  },
-  {
-    id: '4',
-    english: 'It is during our darkest moments that we must focus to see the light.',
-    chinese: '在我们最黑暗的时刻，我们必须集中精力才能看到光明。',
-    author: 'Aristotle',
-    date: '2026-04-24'
-  },
-  {
-    id: '5',
-    english: 'Success is not final, failure is not fatal: it is the courage to continue that counts.',
-    chinese: '成功不是终点，失败也不是致命的：重要的是继续前进的勇气。',
-    author: 'Winston Churchill',
-    date: '2026-04-25'
-  }
+  { id: '1', english: 'The only way to do great work is to love what you do.', chinese: '做伟大的工作的唯一方法就是热爱你所做的事情。', author: 'Steve Jobs', date: '2026-04-21' },
+  { id: '2', english: 'Life is what happens when you\'re busy making other plans.', chinese: '生活就是当你忙于制定其他计划时发生的事情。', author: 'John Lennon', date: '2026-04-22' },
+  { id: '3', english: 'The future belongs to those who believe in the beauty of their dreams.', chinese: '未来属于那些相信梦想之美的人。', author: 'Eleanor Roosevelt', date: '2026-04-23' },
+  { id: '4', english: 'It is during our darkest moments that we must focus to see the light.', chinese: '在我们最黑暗的时刻，我们必须集中精力才能看到光明。', author: 'Aristotle', date: '2026-04-24' },
+  { id: '5', english: 'Success is not final, failure is not fatal: it is the courage to continue that counts.', chinese: '成功不是终点，失败也不是致命的：重要的是继续前进的勇气。', author: 'Winston Churchill', date: '2026-04-25' },
+  { id: '6', english: 'Every moment is a fresh beginning.', chinese: '每一刻，都是崭新的开始。', author: 'T.S. Eliot', date: '2026-04-26' },
+  { id: '7', english: 'Believe you can and you\'re halfway there.', chinese: '相信你能做到，你就已经成功了一半。', author: 'Theodore Roosevelt', date: '2026-04-27' },
+  { id: '8', english: 'The best way to predict the future is to create it.', chinese: '预测未来的最好方法就是创造未来。', author: 'Peter Drucker', date: '2026-04-28' },
+  { id: '9', english: 'Don\'t watch the clock; do what it does. Keep going.', chinese: '不要盯着时钟看，要像时钟一样：不断前行。', author: 'Sam Levenson', date: '2026-04-29' },
+  { id: '10', english: 'Everything you\'ve ever wanted is on the other side of fear.', chinese: '你想要的一切都在恐惧的另一边。', author: 'George Addair', date: '2026-04-30' },
+  { id: '11', english: 'Opportunities don\'t happen. You create them.', chinese: '机会不会凭空出现，是你创造了它们。', author: 'Chris Grosser', date: '2026-05-01' },
+  { id: '12', english: 'It always seems impossible until it\'s done.', chinese: '在完成之前，一切看起来都是不可能的。', author: 'Nelson Mandela', date: '2026-05-02' },
+  { id: '13', english: 'Dream big and dare to fail.', chinese: '敢于梦想，敢于失败。', author: 'Norman Vaughan', date: '2026-05-03' },
+  { id: '14', english: 'The only limit to our realization of tomorrow will be our doubts of today.', chinese: '实现明天理想的唯一障碍是今天的疑虑。', author: 'Franklin D. Roosevelt', date: '2026-05-04' },
+  { id: '15', english: 'Do what you can, with what you have, where you are.', chinese: '在你所在的地方，用你所有的，做你能做的。', author: 'Theodore Roosevelt', date: '2026-05-05' },
+  { id: '16', english: 'Start where you are. Use what you have. Do what you can.', chinese: '从你现在所在的地方开始，用你现有的资源，做你能做的事。', author: 'Arthur Ashe', date: '2026-05-06' },
+  { id: '17', english: 'Fall seven times, stand up eight.', chinese: '跌倒七次，站起来八次。', author: 'Japanese Proverb', date: '2026-05-07' },
+  { id: '18', english: 'We become what we think about.', chinese: '我们成为我们所想的那样。', author: 'Earl Nightingale', date: '2026-05-08' },
+  { id: '19', english: 'An unexamined life is not worth living.', chinese: '未经审视的人生不值得过。', author: 'Socrates', date: '2026-05-09' },
+  { id: '20', english: 'Happiness depends upon ourselves.', chinese: '幸福取决于我们自己。', author: 'Aristotle', date: '2026-05-10' },
 ]
 
 export const getTopicById = (id: string): Topic | undefined => {
@@ -213,4 +198,13 @@ export const getDailyQuote = (): DailyQuote => {
   const today = new Date().toISOString().split('T')[0]
   const quote = dailyQuotes.find(q => q.date === today)
   return quote || dailyQuotes[0]
+}
+
+export const getDailyQuoteByDate = (dateStr: string): DailyQuote => {
+  const quote = dailyQuotes.find(q => q.date === dateStr)
+  if (quote) return quote
+  // 如果没有精确匹配，用日期哈希轮询
+  const date = new Date(dateStr)
+  const index = Math.abs(date.getDate() + date.getMonth() * 31) % dailyQuotes.length
+  return dailyQuotes[index]
 }
